@@ -151,8 +151,33 @@ nil)
       board                                      ;format izlaza za prvi reduce (new-board) i pocetno stanje 
       (for [x (range h) y (range w)] [x y]))))   ;vrti ulazne vrednosti [x y] u vrenostima matrice (vektor vektora)
 
-(-> (iterate indexed-step3 glider) (nth 3) pprint)         ;poziva indexed-step3 i vrti tri iteracije
+;(-> (iterate indexed-step3 glider) (nth 3) pprint)         ;poziva indexed-step3 i vrti tri iteracije
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Dovde radi bez ovoga
+
+
+(partition 5 1 (range 9))            ;pravi liste od pet elemenata, gde su elementi range 9 tj. 0-8
+                                     ;i svaki prvi element liste je uvecan za 1 u odnose na prethodni
+;((0 1 2 3 4) (1 2 3 4 5) (2 3 4 5 6) (3 4 5 6 7) (4 5 6 7 8))
+
+(partition 3 1 (concat [nil] (range 5) [nil]))   ;ovde su elementi nil 0 1 2 3 4 nil
+;((nil 0 1) (0 1 2) (1 2 3) (2 3 4) (3 4 nil))
+
+(defn window
+  "Returns a lazy sequence of 3-item windows centered around each item of coll, padded as necessary with pad or nil."
+  ([coll] (window nil coll))
+  ;(println coll)
+  ([pad coll]
+    (partition 3 1 (concat [pad] coll [pad]))))
+
+(defn cell-block
+  "Creates a sequences of 3x3 windows from a triple of 3 sequences."
+  [[left mid right]]
+  ;(println left mid right)
+  (window (map vector left mid right)))  ;map pravi list (vector-vectora [left mid right])
+
+(cell-block [nil ":on" nil])
+
+
 
 
 
