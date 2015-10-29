@@ -165,50 +165,112 @@ nil)
                                                  ;pa se od njih prave trojke gde je svaki prvi clan biran sa stepom 1
 ;((nil 0 1) (0 1 2) (1 2 3) (2 3 4) (3 4 nil))
 
-(defn window
+(defn window              ;222222222222222 DRUGI KORAK 
+                          ;555555555555555 PETI KORAK
   "Returns a lazy sequence of 3-item windows centered around each item of coll, padded as necessary with pad or nil."
   ([coll] (window nil coll))  ;ako je dolaz samo jedna promenjiva (npr samo kolona). onda funkcija poziva samu sebe
                               ;sa novim parametrima, tj. deo funkcije sa dva parametra gde je prvi parametar nil
   ([pad coll]          ;ako su dolaz dve promenjive (npr [nil nil nil ...] i kolona)
-    (println "----- kolone -----")
-    (pprint coll)    ;u prvom prolazu coll je CELA TABELA pozvana iz index-free-step
+    ;(println "----- kolone -----")
+    ;(pprint coll)    ;u prvom prolazu coll je CELA TABELA pozvana iz index-free-step
                      ;u svakom sledecem prolazu coll je sest trojki vectora pozvanih iz cell-block
+                     #_([[nil :on nil nil nil nil]
+                         [nil nil :on nil nil nil]
+                         [:on :on :on nil nil nil]
+                         [nil nil nil nil nil nil]
+                         [nil nil nil nil nil nil]
+                         [nil nil nil nil nil nil]
+                         [nil nil nil nil nil nil]])
+                     ;concat dodaje ne ovu matricu jos na pocetku i na kraju jos jedan red sa po sest nil (u liniji ispod)
+    ;(println "conc" (partition 3 1 (concat [pad] coll [pad])))                
     (partition 3 1 (concat [pad] coll [pad])))) ;pravi trojke gde se svaki prvi clan bira sa stepom 1
-                                                ;u prvom prolazu to su sve trojke 
-(defn cell-block
+                                                ;u prvom prolazu to su sve trojke . svaki clan trojke ima sest clanova
+                                                ;matrica ispod je ulaz za step-row. svaki red je jedan poseban ulaz
+                                                #_(((nil nil nil nil nil nil) [nil :on nil nil nil nil] [nil nil :on nil nil nil]) 
+                                                   ([nil :on nil nil nil nil] [nil nil :on nil nil nil] [:on :on :on nil nil nil]) 
+                                                   ([nil nil :on nil nil nil] [:on :on :on nil nil nil] [nil nil nil nil nil nil]) 
+                                                   ([:on :on :on nil nil nil] [nil nil nil nil nil nil] [nil nil nil nil nil nil]) 
+                                                   ([nil nil nil nil nil nil] [nil nil nil nil nil nil] [nil nil nil nil nil nil]) 
+                                                   ([nil nil nil nil nil nil] [nil nil nil nil nil nil] [nil nil nil nil nil nil]) 
+                                                   ([nil nil nil nil nil nil] [nil nil nil nil nil nil] (nil nil nil nil nil nil)))
+                                                
+                                                ;u DRUGOM (i svim ostalim krugovima (dok se ne iscrpe svi redovi matrice)) KRUGU 
+                                                ;kada poziva cell-block ulaz je sest vektora sa po tri clana
+                                                ;([nil nil nil] [nil :on nil] [nil nil :on] [nil nil nil] [nil nil nil] [nil nil nil])
+                                                ;izlaz je sest trojki vrktora sa po tri clana
+                                                ;conc ((nil [nil nil nil] [nil :on nil]) 
+                                                ;      ([nil nil nil] [nil :on nil] [nil nil :on]) 
+                                                ;      ([nil :on nil] [nil nil :on] [nil nil nil]) 
+                                                ;      ([nil nil :on] [nil nil nil] [nil nil nil]) 
+                                                ;      ([nil nil nil] [nil nil nil] [nil nil nil]) 
+                                                ;      ([nil nil nil] [nil nil nil] nil))
+                                                ;svaka od ovih trojki je ulaz za liveness
+                                                
+(defn cell-block             ;CETVRTI KORAK KORAK
   "Creates a sequences of 3x3 windows from a triple of 3 sequences."
   [[left mid right]]
-  (println "sledeci pozivi")
-  (window (map vector left mid right)))  ;map pravi list (vector-vectora [left mid right])
+  ;(println "sledeci pozivi" [left mid right])
+  ;(println "             " (map vector left mid right)) ;([nil nil nil] [nil :on nil] [nil nil :on] [nil nil nil] [nil nil nil] [nil nil nil])
+  (window (map vector left mid right)))  ;map pravi list (vector-vectora [left mid right]) i to tako sto pravi trojke svih 
+                                         ;prvih clanova pa zatim svih drugih clanova pa trecih ... pa n-tih. rezlultat je u liniji iznad
                                          ;window poziva funkciju sa jednim parametrom koja prvi parameter definise kao nil
-(defn liveness
+                                         
+(defn liveness              ;666666666666666 SESTI KORAK
   "Returns the liveness (nil or :on) of the center cell for the next step."
   [block]
-  (let [[_ [_ center _] _] block]
-    (case (- (count (filter #{:on} (apply concat block)))
-             (if (= :on center) 1 0))
-      2 center
-      3 :on
-      nil)))
-(defn step-row
+  (let [[_ [_ center _] _] block]  ;izvaja vrednost centralnog (tekucek) polja po sistemu [[vector] [polje centar polje] [vector]]
+    (case                              ;izbor
+      (- (count (filter #{:on} (apply concat block)))  ;apply spaja u list sve vrednosti vektora u block
+                                                       ;filter prociscava samo :on iz resenja prethodne linije
+                                                       ;count broji broj calnova u filtriranom listu
+         (if (= :on center) 1 0))               ;dobijeni broj se umanjuje za jedan ako je centrani clan :on
+      2 center        ;ako je broj polja :on 2 onda je vrednost ne promenjena
+      3 :on           ;ako je vresdnost 3 onda je nova vrednost polja :on
+      nil)))          ;u svim ostalim slucajevima je nil
+
+(defn step-row                    ; 3333333333333 TRECI KORAK
   "Yields the next state of the center row."
   [rows-triple]     ;ulaz su sest vectora trojki
-  ;(println rows-triple)     ;vrti nil beskonacno? vrti beskonacno zato sto u pozadini non stop puni nil a nama treba samo dad opunimo matricu
+  ;(println "rows-triple" rows-triple)  ;rows-triple ((nil nil nil nil nil nil) [nil :on nil nil nil nil] [nil nil :on nil nil nil])...
   (vec (map liveness (cell-block rows-triple)))) ;vec - pretvara listu u vector
-                                                 ;map - pravi listu vectora
+                                                 ;map - pravi listu vectora tj u nasem slucaju pravi vector od sest elemenata
+                                                 ;[:on nil :on nil nil nil]
 
 ;PROGRAMSKO RESENJE
-(defn- index-free-step
- "Yields the next state of the board."
- [board]
- (println  "------------------------------------POCETAK") (println "prvi poziv")
- (vec (map step-row (window (repeat nil) board))) ;mora repeat nil da bi se napravio prvi nepostojeci red matrice sa svim nilovima
- (println "kraj prvog poziva" )  ;poziva funkciju window sa parametrima [nil nil ... ] tabela
+(defn index-free-step             ;1111111111111111 PRVI KORAK
+   "Yields the next state of the board."
+   [board]
+   ;(println  "------------------------------------POCETAK") (println "prvi poziv")
+   (vec (map step-row (window (repeat 6 nil) board))) ;mora repeat nil da bi se napravio prvi nepostojeci red matrice sa svim nilovima
+                                                      ;pravi novu matricu (sa pomerenim vrednostima on/nil pravila igre)
+                                                      ;map pravi listu vectora
+                                                      ;vec listu vektora pretvara u vektor vektora
+                                                      ;[[nil nil nil nil nil nil] 
+                                                      ; [:on nil :on nil nil nil] 
+                                                      ; [nil :on :on nil nil nil] 
+                                                      ; [nil :on nil nil nil nil] 
+                                                      ; [nil nil nil nil nil nil] 
+                                                      ; [nil nil nil nil nil nil] 
+                                                      ; [nil nil nil nil nil nil]]
+   
+   
+   ;(println "kraj prvog poziva" )                    ;poziva funkciju window sa parametrima [nil nil ... ] tabela
  )
 
 
 (= (nth (iterate indexed-step glider) 1)          ;poziva PRVI NACIN 
    (nth (iterate index-free-step glider) 1))      ;poziva programsko resenje i rezultat je true - resenja su ista
+
+
+;(partition 3 1 (concat [[nil nil nil nil nil nil]] [[nil :on nil nil nil nil]] [[nil nil :on nil nil nil]]))
+
+
+
+
+
+
+
+
 
 
 
