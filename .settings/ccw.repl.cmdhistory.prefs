@@ -1,2 +1,2 @@
-cmdhistory=["(empty-board)" "(empty-board 30 30)" "(empty-board 2 3)" "(empty-board  5 6\\n              )" "(empty-board 3 6)" "(pprint glider)" "(glider)" "(pprint glider)" " (pprint (for [x (range 10)] (range x)))" "(rep)" "(empty-board 3 7)" "(rep 5 10)" "(rep 5 7)" "(rep 5 10)" "(rep 5 6)" "(neighbours 4 6)" "(neighbours [4 6])" "(neighbours [3 6])"]
+cmdhistory=["(empty-board)" "(empty-board 30 30)" "(empty-board 2 3)" "(empty-board  5 6\\n              )" "(empty-board 3 6)" "(pprint glider)" "(glider)" "(pprint glider)" " (pprint (for [x (range 10)] (range x)))" "(rep)" "(empty-board 3 7)" "(rep 5 10)" "(rep 5 7)" "(rep 5 10)" "(rep 5 6)" "(neighbours 4 6)" "(neighbours [4 6])" "(neighbours [3 6])" "(repeat nil)"]
 eclipse.preferences.version=1

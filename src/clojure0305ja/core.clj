@@ -75,13 +75,13 @@ nil)
 (defn indexed-step
   "Yields the next state of the board, using indices to determine neighbors,liveness, etc."
   [board]
-  (println "-------------------------------------------NOVI POCETAK")
-  (pprint board)
+  ;(println "-------------------------------------------NOVI POCETAK")
+  ;(pprint board)
   (let [w (count board)                     ;w-broj redova (rows) - racuna se kao broj vektora u boardu
         h (count (first board))]            ;h-broj kolona (columns) - racuna se kao broj polja u prvom redu
     ;(println "cccc" w h)
     (loop [new-board board x 0 y 0]         ;formira new-board koji je vrste board i vrti od x=0 i y=0
-      (println x y)
+      ;(println x y)
       (cond                                  ;switch (ali sa uslovom. kod switch mora da bude string, broj ili neka konstantna vrednost)
         (>= x w) new-board                   ;stampa new-board i izlazi iz loop petlje
         (>= y h) (recur new-board (inc x) 0) ;rekurzija za loop
@@ -154,35 +154,61 @@ nil)
 ;(-> (iterate indexed-step3 glider) (nth 3) pprint)         ;poziva indexed-step3 i vrti tri iteracije
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;Dovde radi bez ovoga
 
+(into [](range 10 17))
+;[10 11 12 13 14 15 16]
 
 (partition 5 1 (range 9))            ;pravi liste od pet elemenata, gde su elementi range 9 tj. 0-8
                                      ;i svaki prvi element liste je uvecan za 1 u odnose na prethodni
 ;((0 1 2 3 4) (1 2 3 4 5) (2 3 4 5 6) (3 4 5 6 7) (4 5 6 7 8))
 
-(partition 3 1 (concat [nil] (range 5) [nil]))   ;ovde su elementi nil 0 1 2 3 4 nil
+(partition 3 1 (concat [nil] (range 5) [nil]))   ;concat spaja nil sa 0 1 2 3 4 i nil. ovde su elementi nil 0 1 2 3 4 nil
+                                                 ;pa se od njih prave trojke gde je svaki prvi clan biran sa stepom 1
 ;((nil 0 1) (0 1 2) (1 2 3) (2 3 4) (3 4 nil))
 
 (defn window
   "Returns a lazy sequence of 3-item windows centered around each item of coll, padded as necessary with pad or nil."
-  ([coll] (window nil coll))
-  ;(println coll)
-  ([pad coll]
-    (partition 3 1 (concat [pad] coll [pad]))))
-
+  ([coll] (window nil coll))  ;ako je dolaz samo jedna promenjiva (npr samo kolona). onda funkcija poziva samu sebe
+                              ;sa novim parametrima, tj. deo funkcije sa dva parametra gde je prvi parametar nil
+  ([pad coll]          ;ako su dolaz dve promenjive (npr [nil nil nil ...] i kolona)
+    (println "----- kolone -----")
+    (pprint coll)    ;u prvom prolazu coll je CELA TABELA pozvana iz index-free-step
+                     ;u svakom sledecem prolazu coll je sest trojki vectora pozvanih iz cell-block
+    (partition 3 1 (concat [pad] coll [pad])))) ;pravi trojke gde se svaki prvi clan bira sa stepom 1
+                                                ;u prvom prolazu to su sve trojke 
 (defn cell-block
   "Creates a sequences of 3x3 windows from a triple of 3 sequences."
   [[left mid right]]
-  ;(println left mid right)
+  (println "sledeci pozivi")
   (window (map vector left mid right)))  ;map pravi list (vector-vectora [left mid right])
+                                         ;window poziva funkciju sa jednim parametrom koja prvi parameter definise kao nil
+(defn liveness
+  "Returns the liveness (nil or :on) of the center cell for the next step."
+  [block]
+  (let [[_ [_ center _] _] block]
+    (case (- (count (filter #{:on} (apply concat block)))
+             (if (= :on center) 1 0))
+      2 center
+      3 :on
+      nil)))
+(defn step-row
+  "Yields the next state of the center row."
+  [rows-triple]     ;ulaz su sest vectora trojki
+  ;(println rows-triple)     ;vrti nil beskonacno? vrti beskonacno zato sto u pozadini non stop puni nil a nama treba samo dad opunimo matricu
+  (vec (map liveness (cell-block rows-triple)))) ;vec - pretvara listu u vector
+                                                 ;map - pravi listu vectora
 
-(cell-block [nil ":on" nil])
+;PROGRAMSKO RESENJE
+(defn- index-free-step
+ "Yields the next state of the board."
+ [board]
+ (println  "------------------------------------POCETAK") (println "prvi poziv")
+ (vec (map step-row (window (repeat nil) board))) ;mora repeat nil da bi se napravio prvi nepostojeci red matrice sa svim nilovima
+ (println "kraj prvog poziva" )  ;poziva funkciju window sa parametrima [nil nil ... ] tabela
+ )
 
 
-
-
-
-
-
+(= (nth (iterate indexed-step glider) 1)          ;poziva PRVI NACIN 
+   (nth (iterate index-free-step glider) 1))      ;poziva programsko resenje i rezultat je true - resenja su ista
 
 
 
