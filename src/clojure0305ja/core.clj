@@ -1,5 +1,7 @@
 (ns clojure0305ja.core
   (:use clojure.pprint))           ;koriscenje pprint komande
+(import
+    '(java.awt Color))    ;za rgb boje 
 
 (defn empty-board         ;kreiranje prazne tabele
   "Creates a rectangular empty board of the specified width and height."
@@ -17,6 +19,7 @@
 (defn populate      ;menjanje odredjenih polja sa vrednosti nil na :on vrednostima
   "Turns :on each of the cells specified as [y, x] coordinates."
   [board living-cells]
+  ;(println "populate")
   (reduce                      ;
     (fn [board coordinates]            ;board-je doneta vrednost, coordinates je vrednost koja se racuna u hodu i upisuje se 
                                              ;u ovom slucaju u board
@@ -55,8 +58,8 @@ nil)
   [[x y]]           ;trenutna tacka
   (for [dx [-1 0 1] dy [-1 0 1] :when (not= 0 dx dy)]  ;when je true samo kada su dx i dy nula. To je slucaj kada bi nova tacka imala
     (do                                                  ;iste koordinate kao i trenutna tacka pa je ne racunamo
-      ;(println dx dy)
-      [(+ dx x) (+ dy y)])))
+      ;(println "dx dy" [x y] dx dy)
+      [(+ dx x) (+ dy y)])))  ;vraca koordinate svih tacaka oko trenutne/donete/zive tacke
 
 
 
@@ -258,18 +261,178 @@ nil)
  )
 
 
-(= (nth (iterate indexed-step glider) 1)          ;poziva PRVI NACIN 
-   (nth (iterate index-free-step glider) 1))      ;poziva programsko resenje i rezultat je true - resenja su ista
+#_(= (nth (iterate indexed-step glider) 1)          ;poziva PRVI NACIN 
+         (nth (iterate index-free-step glider) 1))      ;poziva programsko resenje i rezultat je true - resenja su ista
 
 
 ;(partition 3 1 (concat [[nil nil nil nil nil nil]] [[nil :on nil nil nil nil]] [[nil nil :on nil nil nil]]))
 
+(defn step
+  "Yields the next state of the world"
+  [cells]
+  (println "------POCETAK NOVOG")
+  (println "cells" cells)
+  (set      ;u sustini ne treba     
+   (for [[loc n] (frequencies (mapcat neighbours cells))  ;u varijablu loc upisuje koja je vrednos varijable
+                                                          ;u varijablu n upisuje koliko se puta ponavlja vrednost varijable
+                                                          ;i sve se to ponavlja dokle ima polja 
+                                                          ;(za svako polje je definisano osam komsijskih polja)
+                                                          ;neighbours - Uzima/racuna sve pozicije (tacke) oko trenutne tacke koje nisu nil
+         :when (or (= n 3) (and (= n 2) (cells loc)))]  ;when se koristi kada je potreban samo true izbor
+                                                        ;celija nastavlja ili pocinje da zivi samo ako ima tri suseda ili
+                                                        ;ima dva suseda i bila je ziva u proslosti
+     loc)) )  ;u resenje funkcije (ziva polja) ulaze samo polja gde je :when true
+
+#_(->> (iterate step #{[2 0] [2 1] [2 2] [1 2] [0 1]})  ;polja koja su u startu :on. za svaku od njih se poziva funkcija step
+   (drop 1)                 ;broj koraka (ako je 0 postavljaju se samo default vrednosti. ako je 1 poziva se funkcija jednom ...)
+   first                         ;uzima praznu tabelu kreiranu u populate
+   (populate (empty-board 6 6))    ;kreira praznu tabelu  ;ovo PRVO IZVRSAVA
+   pprint)                         ;lepa stampa
+
+(defn f1
+  [n]
+  [(- n 1) n (+ n 1)])
+(f1 1)
+;[0 1 2]
+(map f1 [4 9 10])   ;svaku vrednost uvrstava u funkciju f1 i resenja pakuje u vektor koje pakuje u list
+;([3 4 5] [8 9 10] [9 10 11])
+(apply concat (map f1 [4 9 10]))  ;spoji sta ima sa ponavljanjem
+;(3 4 5 8 9 10 9 10 11)
+(mapcat f1 [4 9 10])       ;radi i sto sto i prethodna funkcija / SKRACENO od prethodne funkcije
+;(3 4 5 8 9 10 9 10 11)
+(frequencies (mapcat f1 [4 9 10]))
+;{3 1, 4 1, 5 1, 8 1, 9 2, 10 2, 11 1}  trojka se ponavlja jednom, ..., devetka dva puta, ...
+
+(defn stepper
+   "Returns a step function for Life-like cell automata.
+   neighbours takes a location and return a sequential collection
+   of locations. survive? and birth? are predicates on the number
+   of living neighbours."
+   [neighbours birth? survive?]      ;birth? i survive? imaju znak pitanja samo sto su imena promenjivih tako definisana (lakse nam je da pratimo
+                                             ;jer se koriste u pitalici). Sasvim je svedno i sa smo ih krstili bez znaka pitanja
+   ;(println "iuiytt" neighbours birth? survive?)
+   ;iuiytt #<core$hex_neighbours clojure0305ja.core$hex_neighbours@16a4b108> #{2} #{4 3)
+   (fn [cells]     ;u cells su smestene vrednosti koje su donete u neighbours. cells su koordinate tacke
+     ;cells #{[2 2] [2 0] [2 1] [1 2] [0 1]}
+     ;(println "cells" cells) 
+        ;cells #{[45 46] [45 47] [45 45] [46 46]}     
+     ;(println (mapcat neighbours cells))
+       ;([44 45] [44 46] [44 47] [45 45] [45 47] [46 45] [46 46] [46 47] [44 46] [44 47] [44 48] [45 46] [45 48] [46 46] [46 47] [46 48] [44 44] [44 45] [44 46] [45 44] [45 46] [46 44] [46 45] [46 46] [45 45] [45 46] [45 47] [46 45] [46 47] [47 45] [47 46] [47 47])       
+     ;(println (frequencies (mapcat neighbours cells)))
+        ;{[47 47] 1, [45 48] 1, [47 45] 1, [44 46] 3, [45 46] 3, [46 45] 3, [46 48] 1, [44 47] 2, [47 46] 1, [44 45] 2, [44 44] 1, [44 48] 1, [45 47] 2, [45 45] 2, [46 46] 3, [46 44] 1, [46 47] 3, [45 44] 1}
+     (set (for [[loc n] (frequencies (mapcat neighbours cells))  ;u varijablu loc upisuje koja je vrednos varijable
+                                                                 ;u varijablu n upisuje koliko se puta ponavlja vrednost varijable
+                                                                 ;i sve se to ponavlja dokle ima tacaka definisanih u cells
+                                                                 ;(za svako polje je definisano osam komsijskih polja)
+                :when (if (cells loc) (survive? n) (birth? n))]  ;tacka ce biti ziva samo ako je :when ispunjno
+                                                                 ;PRVO PROVERAVA if (cells loc)
+                                                                 ;ako je taj if true onda proverava uslov (survive? n) ako je i on true belezimo rezultat u loc
+                                                                 ;ako nije onda proverav uslov (birth? n) ako je on true sve ukupno je true ako nije ne belezi se resenje
+                                                                    ;cells su koordinate trenutne zive tacke
+                                                                    ;loc su koordinate svih (za sva ziva polja) susednih tacaka
+                                                                    ;pitanje za ispunjen if uslov
+                                                                    ;nema jednakosti zato sto su koordinate, da su brojevi mora biti znak =
+                                                                 ;tj. AKO resenje if (cells loc) ima true resenje za 
+                                                                 ;IF true - ako je broj suseda tacke 3 ili 4 donete vrednosti survive? je #{3 4}
+                                                                 ;IF false - ako je broj susednih tacaka jednak 2 doneta vrednost birth? je #{2}
+            loc))))       ;u resenja (tacke su zive) ulaze samo tacke kod kojih je ispunjen uslov :when 
+(defn when_if
+  [donos? d?]
+  (fn [x] 
+    (for [p (range 100)
+          :when (if (= x p) (= d? p) (= donos? p))]
+          (println p))))
+
+;((when_if 2 3) 3)   ;poziva when_if sa paaametrima
+                      ;donos? = 2
+                      ;d? =3
+                      ;parametar x podfunkcije = 3
+#_(
+2 3           ;resenja su (2 3)
+3               ;2 za x(3)<> p(2) i donos?(2)=p(2) 
+(2 3))          ;3 za x(3)=p(3) i d?(3)=p(3)    
+
+(defn hex-neighbours          ;ulaz su sve zive tacke koje se nalaze u setu i za svaku zivu tacku racuna nove tacke koje ozivljavaju
+                                ;u njenom komsiluku, tako da ako je u pitanju tekuca taka (dx=0) 
+                                ;zbog ekspanzije se koordinate dy pomeraju za dva poena
+  [[x y]]
+  ;(println "--------------hh" [x y])
+  #_(--------------hh [2 2]
+     --------------hh [2 0]
+     --------------hh [2 1]
+     --------------hh [1 2]
+     --------------hh [0 1]
+     )
+  (for [dx [-1 0 1] dy (if (zero? dx) [-2 2] [-1 1])] ;vrti dx sa vrednostima [-1 0 1] i dy tako da je dy [-2 2] ako je dx nula
+                                                                                                       ;i [-1 1] ako dx nije nula
+    (do
+      ;(println "iiiiiiii" [x y] [dx dy] [(+ dx x) (+ dy y)])
+      #_(iiiiiiii [2 2] [-1 -1] [1 1]
+         iiiiiiii [2 2] [-1 1] [1 3]
+         iiiiiiii [2 2] [0 -2] [2 0]
+         iiiiiiii [2 2] [0 2] [2 4]
+         iiiiiiii [2 2] [1 -1] [3 1]
+         iiiiiiii [2 2] [1 1] [3 3])
+      [(+ dx x) (+ dy y)])))
+;(def hex-step (stepper hex-neighbours #{2} #{3 4}))  ;poziva stepper sa donetim zivim tackama i 
+                                                     ;definisanim  birth? = 2 i survive? = 3,4
+                                                     ;radja se nova ako ima dva suseda i opstaje ako ima tri ili cetiri suseda
+
+;(hex-step #{[2 0] [2 1] [2 2] [1 2] [0 1]})   ;poziva hex-step sa zivim tackama i zive tacke smesta u hex-neighbours
+;#{[2 3] [1 1] [0 3] [3 1]}
 
 
 
+(defn rect-stepper 
+  "Returns a step function for standard game of life on a (bounded) rectangular
+   board of specified size."
+  [w h]           ;w-sirina table, h-visina table
+  (stepper #(filter (fn [[i j]] (and (< -1 i w) (< -1 j h)))   ;poziva funciju stepper 
+                                                             ;filter kontrolise da li su tacke u okviru zadate forme.
+                                                             ;tacke koje su van forme nece biti prikazane
+                    ;(neighbours %)) #{2 3} #{1}))
+                    (neighbours %)) #{2 3} #{3}))
 
+(defn draw
+  [w h step cells] ;w-sirina, h-visina, step-izlaz iz funkcije rect-stepper, cels-pocetne tacke koje su zive
+  ;(println w h step cells)
+  ;90 90 #<core$stepper$fn__11023 clojure0305ja.core$stepper$fn__11023@2faf4eb9> #{[45 46] [45 47] [45 45] [46 46]}
+  (let [state (atom cells)          ;state je atom ge su smestene sve vrednosti zivih polja
+        run (atom true)             ;atom za kontrolu kraja izvrsenja programa
+        listener (proxy [java.awt.event.WindowAdapter] []
+                   (windowClosing [_] (reset! run false)))  ;listener za prekid programa. kada se zatvori forma @run = false
+        pane
+          (doto (proxy [javax.swing.JPanel] []                                  ;formiranje panela
+                  (paintComponent [^java.awt.Graphics g]                        
+                    (let [g (doto ^java.awt.Graphics2D (.create g)              ;formiranje grafike
+                              (.setColor java.awt.Color/BLACK)                  ;trenutna boja crna
+                              (.fillRect 0 0 (* w 100) (* h 10))                ;crta pravougaonik sa pozadinom na formi
+                              ;(.setColor java.awt.Color/WHITE)                  
+           (.setColor (Color. 165 11 11 255))            ;SA (import'(java.awt Color))        ;boja zivih polja
+                                                             ;rgb + oppacity. ako nema podrazumeva se 255 max pokrivanje
+           ;(.setColor (java.awt.Color. 165 80 80 255))   ;BEZ (import'(java.awt Color))
+           )]
+                      (doseq [[x y] @state]           ;za svaku tacku iz @state crta se ziva tacka sa koordinatama ...
+                        (.fillRect g (* 10 x) (* 10 y) 8 8)))))    ;nacrtaj zivu tacku
+            (.setPreferredSize (java.awt.Dimension. (* 10 w) (* 10 h))))]    ;maksimalna velicina
+    ;(println state)
+    ;#<Atom@165af640: #{[45 46] [45 47] [45 45] [46 46]}>
+    (doto (javax.swing.JFrame. "Quad Life")   ;Formira Frame sa Panelom pane
+      (.setContentPane pane)          ; dodavanje panela pane
+      (.addWindowListener listener)   ;dodavanje listenera listener
+      .pack
+      (.setVisible true))
+    (future (while @run          ;ponavljaj dok je parametar @run = true
+              (Thread/sleep 80)   ;usporava izvrsavanje - uspavljuje nit na 80 msec
+              (swap! state step)  ;automatski svapuje (vrti sa dobijenim parametrima) podatke u atomu (state) 
+              ;(println state)
+              (.repaint pane)))))   ;osvezava panel
 
+(defn rect-demo []
+  (draw 90 90 (rect-stepper 90 90) 
+      #{[45 45] [45 47] [46 46] [45 46]}))  ;definisanjepocetnih zivih tacaka
 
+(rect-demo)
 
 
 
